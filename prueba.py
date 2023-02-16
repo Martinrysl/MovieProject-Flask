@@ -9,8 +9,8 @@ response_json = response.json()
 results = response_json['results']
 final = len(results)
 for i in range(0, final):
-    print(results[i]['original_title'])
-    print(results[i]['id'])
+    print(results[i]['poster_path'])
+
 
 
 

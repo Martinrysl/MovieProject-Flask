@@ -16,6 +16,8 @@ KEY = 'fbb315277915128a7e9f0af1e7ac6fdf'
 movies_title = []
 dates = []
 ides = []
+img_url = []
+description_url = []
 Bootstrap(app)
 
 
@@ -24,9 +26,9 @@ class Movies(db.Model):
     title = db.Column(db.String(80), unique=True, nullable=False)
     year = db.Column(db.Integer, nullable=False)
     description = db.Column(db.String(120), nullable=False)
-    rating = db.Column(db.Float, nullable=False)
-    ranking = db.Column(db.Integer, nullable=False)
-    review = db.Column(db.String(250), nullable=False)
+    rating = db.Column(db.Float, nullable=True)
+    ranking = db.Column(db.Integer, nullable=True)
+    review = db.Column(db.String(250), nullable=True)
     image_url = db.Column(db.String(250), nullable=False)
 
     def __repr__(self):
@@ -34,12 +36,19 @@ class Movies(db.Model):
 
 
 app.app_context().push()
-#db.create_all()
+db.create_all()
 
 
 class MovieTitle(FlaskForm):
     title_movie = StringField('Movie Title', validators=[DataRequired()])
     submit = SubmitField('Add Movie')
+
+
+class MovieEdit(FlaskForm):
+    rating = StringField('Rating')
+    review = StringField('Review')
+    submit = SubmitField('Add Movie')
+
 
 @app.route('/', methods=["GET", "POST"])
 def home():
@@ -56,33 +65,9 @@ def add():
         response = requests.get(API_URL)
         response_json = response.json()
         results = response_json['results']
-        final = len(results)
-        for i in range(0, final):
-            new_results = results[i]['original_title']
-            new_dates = results[i]['release_date']
-            new_ids = results[i]['id']
-            movies_title.append(new_results)
-            dates.append(new_dates)
-            ides.append(new_ids)
-        print(movies_title)
-        print(dates)
-        print(ides)
-        return render_template('select.html', movies=movies_title, dates=dates, final=final, ides=ides, results=results)
+
+        return render_template('select.html', movies=results)
     return render_template('add.html', movie=movie)
-
-
-@app.route("/edit", methods=["GET", "POST"])
-def edit():
-    if request.method == "POST":
-        movie_id = request.form["id"]
-        movie_update = Movies.query.get(movie_id)
-        movie_update.rating = request.form["rating"]
-        movie_update.review = request.form["review"]
-        db.session.commit()
-        return redirect('/')
-    movie_id = request.args.get('id')
-    movie_selected = Movies.query.get(movie_id)
-    return render_template("edit.html", data=movie_selected)
 
 
 @app.route("/delete/<int:id>")
@@ -93,9 +78,35 @@ def delete(id):
     return redirect('/')
 
 
-@app.route("/", methods=["GET", "POST"])
-def select():
-    return render_template("select.html")
+@app.route("/selectmovie")
+def selectmovie():
+    id_film = request.args.get("id")
+    MOVIE_IMG = f'https://image.tmdb.org/t/p/w500'
+    MOVIE_URL = f'https://api.themoviedb.org/3/movie/{id_film}?api_key={KEY}&language=en-US'
+    response = requests.get(MOVIE_URL)
+    selected_movie = response.json()
+    new_film = Movies(
+        title=selected_movie["title"],
+        year=selected_movie["release_date"].split("-")[0],
+        description=selected_movie["overview"],
+        image_url=f"{MOVIE_IMG}{selected_movie['poster_path']}"
+    )
+    db.session.add(new_film)
+    db.session.commit()
+    return redirect(url_for("edit", id=new_film.id))
+
+
+@app.route("/edit", methods=["GET", "POST"])
+def edit():
+    form = MovieEdit()
+    movie_id = request.args.get("id")
+    new_movie = Movies.query.get(movie_id)
+    if form.validate_on_submit():
+        new_movie.rating = float(form.rating.data)
+        new_movie.review = form.review.data
+        db.session.commit()
+        return redirect(url_for('home'))
+    return render_template("edit.html", new_movie=new_movie, form=form)
 
 
 if __name__ == '__main__':
