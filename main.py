@@ -11,6 +11,7 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////Users\martin\PycharmProjects\Movie_Project/topmovies.db"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+app.config['SECRET_KEY'] = 'conejomalo'
 KEY = 'fbb315277915128a7e9f0af1e7ac6fdf'
 movies_title = []
 dates = []
@@ -36,6 +37,10 @@ app.app_context().push()
 #db.create_all()
 
 
+class MovieTitle(FlaskForm):
+    title_movie = StringField('Movie Title', validators=[DataRequired()])
+    submit = SubmitField('Add Movie')
+
 @app.route('/', methods=["GET", "POST"])
 def home():
     movies = Movies.query.all()
@@ -44,18 +49,9 @@ def home():
 
 @app.route("/add", methods=["GET", "POST"])
 def add():
-    if request.method == "POST":
-        movies_title.clear()
-        dates.clear()
-        ides.clear()
-        title = request.form['title']
-        year = request.form['year']
-        description = request.form['description']
-        rating = request.form['rating']
-        ranking = request.form['ranking']
-        review = request.form['review']
-        image_url = request.form['image_url']
-        query = title
+    movie = MovieTitle()
+    if movie.validate_on_submit():
+        query = movie.title_movie.data
         API_URL = f"https://api.themoviedb.org/3/search/movie?api_key={KEY}&query={query}"
         response = requests.get(API_URL)
         response_json = response.json()
@@ -72,8 +68,7 @@ def add():
         print(dates)
         print(ides)
         return render_template('select.html', movies=movies_title, dates=dates, final=final, ides=ides, results=results)
-
-    return render_template('add.html')
+    return render_template('add.html', movie=movie)
 
 
 @app.route("/edit", methods=["GET", "POST"])
