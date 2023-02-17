@@ -52,7 +52,10 @@ class MovieEdit(FlaskForm):
 
 @app.route('/', methods=["GET", "POST"])
 def home():
-    movies = Movies.query.all()
+    movies = Movies.query.order_by(Movies.rating).all()
+    for i in range(len(movies)):
+        movies[i].ranking = len(movies) - i
+    db.session.commit()
     return render_template("index.html", movies=movies)
 
 
